@@ -6,7 +6,13 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 //   1. Abort the current turn via ctx.abort()
 //   2. On message_end, replace the aborted message in-place with the partial
 //      trace + truncation marker (preserves all ThinkingContent blocks)
-//   3. On turn_end, disable thinking and queue a follow-up nudge
+//   3. On turn_end, inject <|think_off|> tag and queue a follow-up nudge
+//   4. On next turn_start, inject <|think_on|> to re-enable thinking
+//
+// Thinking control uses chat-template tags (<|think_off|> / <|think_on|>)
+// because pi.setThinkingLevel() does not work with qwen3.6 / llama.cpp
+// backends. The template scans message content for these tags and sets
+// ns_flags.enable_thinking accordingly.
 //
 // _replaceMessageInPlace in agent-session.js mutates the message object
 // shared by agent-core's context.messages, so the replacement is definitive
@@ -24,6 +30,7 @@ const TRUNCATION_MARKER = "\n\n[thinking truncated — budget exceeded]";
 let thinkingChars = 0;
 let budgetForTurn = DEFAULT_BUDGET;
 let recoveryPending = false;
+let thinkingDisabledForOneTurn = false;
 
 function charsToTokens(chars: number): number {
   // Matches local/context_manager.estimate_tokens (len/3.5)
@@ -136,21 +143,25 @@ export default function (pi: ExtensionAPI) {
     return { message: buildRecoveryMessage(msg.content ?? [], meta) };
   });
 
-  // ── Disable thinking + send follow-up nudge ──
+  // ── Disable thinking + send follow-up nudge / re-enable after one turn ──
 
   pi.on("turn_end", async (_event, _ctx) => {
-    if (!recoveryPending) return;
+    // Path A: budget was just hit — disable thinking for the next turn
+    if (recoveryPending) {
+      await new Promise<void>((r) => setImmediate(r));
+      thinkingDisabledForOneTurn = true;
+      pi.sendUserMessage(
+        "<|think_off|> [thinking budget exceeded] Please commit to an implementation now. Stop deliberating and use your tools to make progress.",
+        { deliverAs: "followUp" },
+      );
+      recoveryPending = false;
+      return;
+    }
 
-    // Yield one tick so pi's abort barrier settles before we queue the
-    // follow-up. On fast-streaming local backends (qwen3.6 / llama.cpp)
-    // queuing immediately after ctx.abort() drops the follow-up silently
-    // and the agent appears to stop with no message — issue #8.
-    await new Promise<void>((r) => setImmediate(r));
-    pi.setThinkingLevel("off");
-    pi.sendUserMessage(
-      "[thinking budget exceeded] Please commit to an implementation now. Stop deliberating and use your tools to make progress.",
-      { deliverAs: "followUp" },
-    );
-    recoveryPending = false;
+    // Path B: the no-thinking turn just completed — re-enable thinking
+    if (thinkingDisabledForOneTurn) {
+      thinkingDisabledForOneTurn = false;
+      pi.sendUserMessage("<|think_on|>", { deliverAs: "steer" });
+    }
   });
 }
