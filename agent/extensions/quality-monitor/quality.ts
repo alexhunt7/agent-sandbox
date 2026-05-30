@@ -20,13 +20,18 @@ export function assessResponse(
   recentToolCalls: ToolCall[],
   knownTools: Set<string>,
   providerStatus?: number,
+  aborted = false,
 ): QualityResult {
   // 1. Empty response with no tool calls
-  //    Skip if the provider returned a non-2xx status or we have no status
-  //    (request failed) — no point correcting a model that couldn't respond.
+  //    Skip if: provider returned non-2xx (server error), no status info
+  //    (request failed), or turn was aborted by user — no point correcting
+  //    a model that was interrupted before it could respond.
   if (!text.trim() && toolCalls.length === 0) {
     if (providerStatus === undefined || providerStatus < 200 || providerStatus >= 300) {
       return { ok: true }; // server error, not a model quality issue
+    }
+    if (aborted) {
+      return { ok: true }; // user interrupted, not a quality issue
     }
     return { ok: false, reason: "empty_response" };
   }

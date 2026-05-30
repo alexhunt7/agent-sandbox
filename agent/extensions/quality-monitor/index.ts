@@ -58,7 +58,7 @@ export default function (pi: ExtensionAPI) {
       .filter((c: any) => c?.type === "toolCall")
       .map((c: any) => ({ name: c.name, input: c.arguments ?? c.input ?? {} }));
 
-    const verdict = assessResponse(text, currentCalls, previousToolCalls, knownTools, lastProviderStatus);
+    const verdict = assessResponse(text, currentCalls, previousToolCalls, knownTools, lastProviderStatus, ctx.signal?.aborted);
 
     // Update rolling state for next turn regardless of verdict
     previousToolCalls = currentCalls;
