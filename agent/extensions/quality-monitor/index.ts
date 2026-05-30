@@ -84,6 +84,6 @@ export default function (pi: ExtensionAPI) {
       `quality-monitor: ${verdict.reason} → queued correction`,
       "warning",
     );
-    pi.sendUserMessage(correction, { deliverAs: "followUp" });
+    pi.sendUserMessage(correction, { deliverAs: "steer" });
   });
 }
