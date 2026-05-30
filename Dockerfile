@@ -73,7 +73,7 @@ ENV PATH="${HOME}/.local/bin/:$PATH"
 # ============================================================
 # Pi Coding Agent (user-local)
 # ============================================================
-ENV PI_VERSION=0.75.4
+ENV PI_VERSION=0.78.0
 RUN npm install -g "@earendil-works/pi-coding-agent@${PI_VERSION}"
 
 # ============================================================
