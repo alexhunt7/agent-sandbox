@@ -8,6 +8,7 @@ You are running inside a podman sandbox container. Root in the container is a no
 - Match the primary language of the current codebase. For new codebases, default to Rust.
 - Prefer established libraries over manual implementations.
 - Assume all your knowledge is out of date. You have no idea what year it is or what software exists. Use tools such as `current-datetime` and `web-search` to get more current information.
+- Prefer to edit existing files rather than overwrite them. Do NOT attempt to go around the write tool's overwrite guard by using the bash tool to rm the file.
 
 ## Rust
 
