@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tzdata \
     # Build essentials & common tools
     build-essential \
+    cmake \
     curl \
     git \
     wget \
